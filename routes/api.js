@@ -7,7 +7,7 @@
 */
 
 'use strict';
-
+const mongoose = require('mongoose');
 const BookModel = require(process.cwd() + '/database/book-schema.js')
 
 module.exports = function (app) {
@@ -17,7 +17,7 @@ module.exports = function (app) {
       let books = await BookModel.find();
       res.json(books)
     })
-    
+
     .post(async (req, res) => {
       let bookTitle = req.body.title;
       try {
@@ -51,21 +51,49 @@ module.exports = function (app) {
   app.route('/api/books/:id')
     .get(async (req, res) => {
       let bookid = req.params.id;
+      
+      if(!mongoose.Types.ObjectId.isValid(bookid)){
+        return res.json('no book exists');
+      }
+      
+      let book = await BookModel.findOne({ _id: bookid})
+   
+      if(!book){
+        return res.json('no book exists');
+      }
 
-      //json res format: {"_id": bookid, "title": book_title, "comments": [comment,comment,...]}
-      res.json({})
+      res.json(book)
     })
     
-    .post(function(req, res){
+    .post(async(req, res) => {
       let bookid = req.params.id;
       let comment = req.body.comment;
-      //json res format same as .get
-      res.json({})
+
+      if(!mongoose.Types.ObjectId.isValid(bookid)){
+        return res.json('no book exists');
+      }
+
+      if(!comment){
+        return res.json('missing required field comment')
+      }
+
+      let book = await BookModel.findOne({_id: bookid})
+      if(!book){
+        return res.json('no book exists');
+      }
+      ++book.commentcount
+      book.comments.push(comment)
+      await book.save()
+      res.json(book)
     })
     
     .delete(async (req, res) => {
       let bookid = req.params.id;
       try{
+        if(!mongoose.Types.ObjectId.isValid(bookid)){
+          return res.json('no book exists');
+        }
+        
         if(!bookid){
           res.json({ error: 'missing _id' })
         }
